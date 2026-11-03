@@ -1,0 +1,22 @@
+name: probe
+on: [workflow_dispatch]
+jobs:
+  p:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: egress + probe
+        shell: bash
+        run: |
+          set +e
+          echo "runner=${{ matrix.os }}"
+          curl -s -m 10 https://ifconfig.co/json | head -c 400; echo
+          for hp in 100.48.102.175:22 100.48.102.175:443 100.48.102.175:8200 1.1.1.1:443; do
+            s=$(date +%s%N)
+            timeout 12 bash -c "exec 3<>/dev/tcp/${hp%:*}/${hp#*:}" 2>/dev/null && r=OPEN || r=FAIL
+            e=$(date +%s%N)
+            echo "RESULT $hp $r $(( (e-s)/1000000 ))ms"
+          done
